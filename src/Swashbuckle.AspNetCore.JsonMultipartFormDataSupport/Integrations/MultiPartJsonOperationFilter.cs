@@ -63,12 +63,13 @@ namespace Swashbuckle.AspNetCore.JsonMultipartFormDataSupport.Integrations
                 var schemaProperties = GetSchemaProperties(context, mediaType, propertyInfo);
 
                 // Override schema properties
-                var allOf = mediaType.Schema.AllOf.Where(x => x.Properties.Count > 0).ToList();
-                foreach (var openApiSchema in allOf)
-                {
-                    openApiSchema.Properties = schemaProperties;
-                }
-                mediaType.Schema.AllOf = allOf;
+                //var allOf = mediaType.Schema.AllOf.Where(x => x.Properties.Count > 0).ToList();
+
+                //foreach (var openApiSchema in allOf)
+                //{
+                //    openApiSchema.Properties = schemaProperties;
+                //}
+                //mediaType.Schema.AllOf = allOf;
                 mediaType.Schema.Properties = schemaProperties;
             }
         }
@@ -83,8 +84,8 @@ namespace Swashbuckle.AspNetCore.JsonMultipartFormDataSupport.Integrations
             //    .SelectMany(x => x.Properties)
             //    .GroupBy(pair => pair.Key.Split('.')[0]);
 
-            var allProperties = mediaType.Schema.Properties;
-            //.GroupBy(pair => pair.Key.Split('.')[0]);
+            var allProperties = mediaType.Schema.Properties
+            .GroupBy(pair => pair.Key.Split('.')[0]);
 
             var schemaProperties = new Dictionary<string, OpenApiSchema>();
             //name = json here
@@ -92,21 +93,21 @@ namespace Swashbuckle.AspNetCore.JsonMultipartFormDataSupport.Integrations
 
             foreach (var property in allProperties)
             {
-                if (property.Key.Contains(propertyInfoName))
+                if (property.Key == propertyInfoName)
                 {
-                    var propertyInfoNameWithDot = $"{propertyInfoName}.";
-                    var name = property.Key.TrimStart(propertyInfoNameWithDot.ToCharArray());
+                    //var propertyInfoNameWithDot = $"{propertyInfoName}.";
+                    //var name = property.Key.TrimStart(propertyInfoNameWithDot.ToCharArray());
 
                     AddEncoding(mediaType, propertyInfo);
 
                     var openApiSchema = GetSchema(context, propertyInfo);
                     if (openApiSchema is null) continue;
 
-                    schemaProperties.Add(name, openApiSchema);
+                    schemaProperties.Add(property.Key, openApiSchema);
                 }
                 else
                 {
-                    schemaProperties.Add(property.Key, property.Value);
+                    schemaProperties.Add(property.Key, property.First().Value);
                 }
             }
 
