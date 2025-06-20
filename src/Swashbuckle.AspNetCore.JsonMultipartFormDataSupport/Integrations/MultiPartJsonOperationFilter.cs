@@ -43,7 +43,8 @@ namespace Swashbuckle.AspNetCore.JsonMultipartFormDataSupport.Integrations
         public void Apply(OpenApiOperation operation, OperationFilterContext context)
         {
             var descriptors = context.ApiDescription.ActionDescriptor.Parameters.ToList();
-            foreach (var descriptor in descriptors) {
+            foreach (var descriptor in descriptors)
+            {
                 descriptor.Name = GetParameterName(descriptor.Name);
 
                 var mediaType = operation.RequestBody?.Content.First().Value;
@@ -52,10 +53,11 @@ namespace Swashbuckle.AspNetCore.JsonMultipartFormDataSupport.Integrations
         }
 
         private void HandleFromJsonAttribute(OpenApiMediaType mediaType, OperationFilterContext context,
-                                             ParameterDescriptor descriptor) {
+                                             ParameterDescriptor descriptor)
+        {
             // Get property with [FromJson]
-            foreach (var propertyInfo in GetPropertyWithFromJson(descriptor)) {
-                    
+            foreach (var propertyInfo in GetPropertyWithFromJson(descriptor))
+            {
                 if (propertyInfo == null) continue;
 
                 var schemaProperties = GetSchemaProperties(context, mediaType, propertyInfo);
@@ -72,31 +74,39 @@ namespace Swashbuckle.AspNetCore.JsonMultipartFormDataSupport.Integrations
         }
 
         private Dictionary<string, OpenApiSchema> GetSchemaProperties(OperationFilterContext context, OpenApiMediaType mediaType,
-                                                                      PropertyInfo propertyInfo) {
+                                                                      PropertyInfo propertyInfo)
+        {
             // Group all exploded properties.
             // IEnumerable<IGrouping<string, KeyValuePair<string, OpenApiSchema>>> allProperties = mediaType.Schema.Properties
             //                                  .GroupBy(pair => pair.Key.Split('.')[0]);
-            var allProperties = mediaType.Schema.AllOf
-                .SelectMany(x => x.Properties)
-                .GroupBy(pair => pair.Key.Split('.')[0]);
+            //var allProperties = mediaType.Schema.AllOf
+            //    .SelectMany(x => x.Properties)
+            //    .GroupBy(pair => pair.Key.Split('.')[0]);
+
+            var allProperties = mediaType.Schema.Properties;
+            //.GroupBy(pair => pair.Key.Split('.')[0]);
 
             var schemaProperties = new Dictionary<string, OpenApiSchema>();
-
+            //name = json here
             var propertyInfoName = GetParameterName(propertyInfo.Name);
 
             foreach (var property in allProperties)
             {
-                if (property.Key == propertyInfoName)
+                if (property.Key.Contains(propertyInfoName))
                 {
+                    var propertyInfoNameWithDot = $"{propertyInfoName}.";
+                    var name = property.Key.TrimStart(propertyInfoNameWithDot.ToCharArray());
+
                     AddEncoding(mediaType, propertyInfo);
 
                     var openApiSchema = GetSchema(context, propertyInfo);
                     if (openApiSchema is null) continue;
-                    schemaProperties.Add(property.Key, openApiSchema);
+
+                    schemaProperties.Add(name, openApiSchema);
                 }
                 else
                 {
-                    schemaProperties.Add(property.Key, property.First().Value);
+                    schemaProperties.Add(property.Key, property.Value);
                 }
             }
 
@@ -119,9 +129,9 @@ namespace Swashbuckle.AspNetCore.JsonMultipartFormDataSupport.Integrations
         {
             var present =
                 context.SchemaRepository.TryLookupByType(propertyInfo.PropertyType, out OpenApiSchema openApiSchema);
-            
+
             if (present) return context.SchemaRepository.Schemas[openApiSchema.Reference.Id];
-            
+
             _ = context.SchemaGenerator.GenerateSchema(propertyInfo.PropertyType, context.SchemaRepository);
             if (!context.SchemaRepository.TryLookupByType(propertyInfo.PropertyType, out openApiSchema)) return null;
             var schema = context.SchemaRepository.Schemas[openApiSchema.Reference.Id];
@@ -141,7 +151,8 @@ namespace Swashbuckle.AspNetCore.JsonMultipartFormDataSupport.Integrations
             mediaType.Encoding = mediaType.Encoding
                                           .Where(pair => !pair.Key.ToLower().Contains(propertyInfo.Name.ToLower()))
                                           .ToDictionary(pair => pair.Key, pair => pair.Value);
-            mediaType.Encoding.Add(propertyInfo.Name, new OpenApiEncoding {
+            mediaType.Encoding.Add(propertyInfo.Name, new OpenApiEncoding
+            {
                 ContentType = "application/json",
                 Explode = false
             });
